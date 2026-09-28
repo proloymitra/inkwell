@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>INKWELL — The Evening Cipher</title>
+<style>
+  :root {
+    --ink: #1a120c;
+    --ink-soft: #3a2a1c;
+    --cream: #f4ead4;
+    --paper: #efe2c6;
+    --gold: #c9a15b;
+    --gold-deep: #8a6730;
+    --rule: #2b2118;
+    --good: #2f6b45;
+    --bad: #8c2f2a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #0d0a08;
+    color: var(--ink);
+    font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  }
+  #stage {
+    position: relative;
+    width: min(100vw, calc(100vh * 9 / 16));
+    height: min(100vh, calc(100vw * 16 / 9));
+    margin: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1a120c;
+    overflow: hidden;
+    box-shadow: 0 0 80px rgba(0,0,0,.65);
+  }
+  #gl {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; z-index: 0;
+  }
+  #ui {
+    position: absolute; inset: 0; z-index: 2;
+    pointer-events: none;
+  }
+  #ui * { pointer-events: auto; }
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: 4.2% 6.5% 3.2%;
+    color: #1a120c;
+    background: #f4ead4;
+  }
+  .screen.on { display: flex; }
+  .screen .copy, .screen .panel-title, .screen .scores, .screen .empty, .screen .btn {
+    color: #1a120c;
+  }
+  .mast {
+    text-align: center;
+    border-top: 3px double var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 6px 0 8px;
+    background: linear-gradient(180deg, rgba(244,234,212,.55), rgba(244,234,212,0));
+  }
+  .kicker {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    letter-spacing: .42em;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  h1.logo {
+    margin: 2px 0 0;
+    font-weight: 700;
+    font-size: clamp(42px, 11vw, 78px);
+    letter-spacing: .16em;
+    line-height: .9;
+    font-variant: small-caps;
+  }
+  .tag {
+    font-style: italic;
+    font-size: 13px;
+    margin-top: 4px;
+    color: var(--ink-soft);
+  }
+  .edition {
+    display: flex; justify-content: space-between;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 10px; letter-spacing: .08em;
+    text-transform: uppercase;
+    border-bottom: 3px double var(--ink);
+    padding: 5px 2px 6px;
+    margin-bottom: 10px;
+  }
+  .menu {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: 6px;
+  }
+  button.btn {
+    appearance: none; border: none; cursor: pointer;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: clamp(16px, 4.2vw, 22px);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 9px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(26,18,12,.28);
+    display: flex; justify-content: space-between; align-items: baseline;
+    transition: background .15s, padding-left .15s;
+  }
+  button.btn:hover, button.btn:focus-visible {
+    background: rgba(201,161,91,.22);
+    padding-left: 14px;
+    outline: none;
+  }
+  button.btn .num {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px; letter-spacing: .2em; opacity: .6;
+  }
+  button.btn.ghost { opacity: .55; }
+  .colophon {
+    margin-top: auto;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: .7;
+    padding-top: 8px;
+  }
+  #streakLine, #bylineLine {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 8px 0 0;
+  }
+  #bylineLine { font-style: italic; letter-spacing: .08em; text-transform: none; opacity: .8; }
+  .panel-title {
+    font-variant: small-caps;
+    letter-spacing: .18em;
+    font-size: clamp(26px, 7vw, 40px);
+    margin: 8px 0 4px;
+    text-align: center;
+  }
+  .rule { height: 0; border-top: 1px solid var(--ink); border-bottom: 3px double var(--ink); margin: 6px 0 12px; }
+  .copy {
+    font-size: 16.5px; line-height: 1.5;
+    color: #1a120c;
+  }
+  .copy p { margin: 0 0 10px; }
+  .copy strong { font-variant: small-caps; letter-spacing: .04em; }
+  .back {
+    margin-top: auto;
+    align-self: flex-start;
+  }
+  .scores { list-style: none; padding: 0; margin: 8px 0; }
+  .scores li {
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    gap: 8px;
+    padding: 7px 2px;
+    border-bottom: 1px dotted rgba(26,18,12,.4);
+    font-size: 15px;
+  }
+  .scores .rk { font-variant: small-caps; opacity: .6; }
+  .scores .sc { font-weight: 700; }
+  .scores .md { font-family: "Segoe UI", sans-serif; font-size: 11px; letter-spacing: .08em; align-self: center; opacity: .7; }
+  .empty { font-style: italic; opacity: .7; text-align: center; margin-top: 24px; }
+
+  /* HUD */
+  #hud {
+    position: absolute; left: 8px; right: 8px; top: 8px;
+    padding: 0;
+    display: none;
+    pointer-events: none;
+    z-index: 3;
+  }
+  #hud.on { display: block; }
+  #hud button { pointer-events: auto; }
+  #hintBtn {
+    border: 1px solid #1a120c;
+    background: transparent;
+    color: #1a120c;
+    font-family: inherit;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+  .hud-top {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 6px;
+    color: #1a120c;
+    background: #f4ead4;
+    border: 1px solid #1a120c;
+    padding: 6px 8px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .hud-top b {
+    font-family: Palatino, Georgia, serif;
+    font-size: 20px; letter-spacing: .04em; font-weight: 700;
+    display: block;
+  }
+  #hudTime {
+    font-variant-numeric: tabular-nums;
+    transition: color .2s;
+  }
+  #hudTime.low { color: var(--bad); }
+  .hud-top .clock { text-align: center; }
+  #clueBox {
+    margin: 6px 0 0;
+    background: #f7f1e4;
+    color: #1a120c;
+    border: 1px solid #1a120c;
+    padding: 8px 10px 9px;
+    text-align: center;
+  }
+  #clueKicker {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 10px; letter-spacing: .28em; text-transform: uppercase; opacity: .65;
+  }
+  #clueText { font-size: clamp(16px, 4vw, 20px); font-style: italic; margin-top: 2px; color: #1a120c; font-weight: 600; }
+  #foundRow {
+    display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+    margin-top: 8px; min-height: 22px;
+  }
+  .chip {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 12px; letter-spacing: .12em;
+    text-transform: uppercase;
+    border: 1px solid #1a120c;
+    padding: 3px 7px;
+    background: #fffaf0;
+    color: #1a120c;
+  }
+  .chip.on { background: #1a120c; color: #f4ead4; }
+  #toast {
+    position: absolute; left: 50%; bottom: 18%;
+    transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--cream);
+    padding: 8px 14px;
+    font-variant: small-caps; letter-spacing: .12em;
+    font-size: 16px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 5;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #levelup {
+    position: absolute; left: 50%; top: 42%;
+    transform: translate(-50%, 12px);
+    z-index: 7;
+    pointer-events: none;
+    opacity: 0;
+    background: #1a120c;
+    color: #f4ead4;
+    border: 1px solid #c9a15b;
+    padding: 10px 18px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+    font-size: 18px;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  #levelup.on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  #pauseBtn, #giveup {
+    position: absolute; z-index: 4;
+    background: rgba(244,234,212,.9);
+    border: 1px solid rgba(26,18,12,.4);
+    color: var(--ink);
+    font-family: "Segoe UI", sans-serif;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-size: 11px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  #pauseBtn, #skipBtn {
+    position: static;
+    display: none;
+    align-self: stretch;
+    background: #1a120c;
+    color: #f4ead4;
+    border: 1px solid #1a120c;
+    font-family: "Segoe UI", sans-serif;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: 10px;
+    padding: 6px 7px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #pauseBtn.on, #skipBtn.on { display: block; }
+  #skipBtn:disabled { opacity: .4; cursor: default; }
+  #playboard {
+    position: absolute; left: 4%; right: 4%; top: 168px; bottom: 92px;
+    z-index: 4;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    pointer-events: none;
+  }
+  #playboard.on { display: flex; }
+  #playboard * { pointer-events: auto; }
+  #status {
+    width: 100%;
+    min-height: 42px;
+    background: #1a120c;
+    color: #f4ead4;
+    text-align: center;
+    font-variant: small-caps;
+    letter-spacing: .08em;
+    font-size: 15px;
+    padding: 8px 10px;
+    line-height: 1.25;
+    display: none;
+  }
+  #status.show { display: block; }
+  #status.good { background: #2f6b45; }
+  #status.bad { background: #8c2f2a; }
+  #rack {
+    position: relative;
+    left: auto; right: auto; bottom: auto;
+    z-index: 4;
+    display: none;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  #rack.on { display: flex; }
+  #rack button.tilebtn {
+    width: 36px; height: 48px;
+    border: 2px solid #1a120c;
+    background: #fffaf0;
+    color: #1a120c;
+    font-family: Palatino, Georgia, serif;
+    font-size: 28px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 3px 4px 0 #1a120c;
+  }
+  #rack button.tilebtn.on {
+    background: #1a120c;
+    color: #f4ead4;
+  }
+  #rack button.tilebtn:disabled { opacity: 0.35; }
+  #wordbar {
+    position: absolute; left: 5%; right: 5%; bottom: 2.4%;
+    z-index: 4;
+    display: none;
+    align-items: center; justify-content: space-between;
+    background: rgba(244,234,212,.94);
+    border: 1px solid rgba(26,18,12,.45);
+    padding: 8px 10px;
+    min-height: 48px;
+  }
+  #wordbar.on { display: flex; }
+  #typecatch {
+    flex: 1;
+    min-width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #1a120c;
+    font-family: Palatino, Georgia, serif;
+    font-size: 28px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    outline: none;
+    caret-color: #1a120c;
+  }
+  #built {
+    font-size: clamp(22px, 6vw, 32px);
+    letter-spacing: .18em;
+    font-variant: small-caps;
+    min-height: 1.1em;
+    color: #1a120c;
+  }
+  #built .ghost { opacity: .28; }
+  #submit {
+    border: none; cursor: pointer;
+    background: var(--ink); color: var(--cream);
+    font-family: inherit;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  #submit:disabled { opacity: .35; }
+  #overlay {
+    position: absolute; inset: 0; z-index: 6;
+    background: rgba(13,10,8,.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 8%;
+  }
+  #overlay.on { display: flex; }
+  .card {
+    width: 100%;
+    background: var(--cream);
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    padding: 18px 16px 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.4);
+    text-align: center;
+  }
+  .card h2 { margin: 0 0 6px; font-variant: small-caps; letter-spacing: .14em; font-size: 28px; }
+  .card p { margin: 6px 0; font-size: 15px; }
+  .card .big { font-size: 42px; letter-spacing: .08em; margin: 4px 0; }
+  .card .row { display: flex; gap: 8px; margin-top: 12px; }
+  .card .row button { flex: 1; }
+  button.solid {
+    border: 1px solid var(--ink);
+    background: var(--ink); color: var(--cream);
+    font-family: inherit; letter-spacing: .12em; text-transform: uppercase;
+    padding: 10px 8px; cursor: pointer; font-size: 14px;
+  }
+  button.line {
+    border: 1px solid var(--ink);
+    background: transparent; color: var(--ink);
+    font-family: inherit; letter-spacing: .12em; text-transform: uppercase;
+    padding: 10px 8px; cursor: pointer; font-size: 14px;
+  }
+  #dailyBadge {
+    display: none;
+    text-align: center;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 10px; letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    margin-bottom: 4px;
+  }
+  #boot {
+    position: absolute; inset: 0; z-index: 8;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 8%;
+    color: var(--cream);
+    font-family: "Segoe UI", sans-serif;
+    letter-spacing: .3em;
+    font-size: 11px;
+    text-transform: uppercase;
+    pointer-events: none;
+    transition: opacity .6s;
+  }
+  .credit {
+    font-size: 11px; font-style: italic; opacity: .75; margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <div id="boot">Setting type…</div>
+  <div id="ui">
+    <section class="screen on" id="screen-menu">
+      <header class="mast">
+        <div class="kicker">The Evening Cipher · Vol. I</div>
+        <h1 class="logo">Inkwell</h1>
+        <div class="tag">“Letters fall. Meaning rises.”</div>
+      </header>
+      <div class="edition">
+        <span id="dateLine">Sunday Edition</span>
+        <span>One Penny</span>
+        <span>City Desk</span>
+      </div>
+      <p id="streakLine"></p>
+      <p id="bylineLine"></p>
+      <nav class="menu" aria-label="Main menu">
+        <button class="btn" data-act="play"><span>Start Game</span><span class="num">01</span></button>
+        <button class="btn" data-act="daily"><span>Daily Challenge</span><span class="num">02</span></button>
+        <button class="btn" data-act="scores"><span>High Scores</span><span class="num">03</span></button>
+        <button class="btn" data-act="howto"><span>How to Play</span><span class="num">04</span></button>
+        <button class="btn" data-act="sound"><span>Sound</span><span class="num" id="soundState">On</span></button>
+        <button class="btn" data-act="music"><span>Music</span><span class="num" id="musicState">On</span></button>
+        <button class="btn" data-act="exit"><span>Exit</span><span class="num">07</span></button>
+      </nav>
+      <div class="colophon">Printed without pictures · Music streams a café ambience while you set type</div>
+    </section>
+
+    <section class="screen" id="screen-levels">
+      <div class="panel-title">Choose a Desk</div>
+      <div class="rule"></div>
+      <div class="copy"><p>Pick a pool. The letters stay still. Extra letters do not belong in the word.</p></div>
+      <nav class="menu">
+        <button class="btn" data-act="easy"><span>Easy</span><span class="num">172</span></button>
+        <button class="btn" data-act="medium"><span>Medium</span><span class="num">122</span></button>
+        <button class="btn" data-act="hard"><span>Hard</span><span class="num">83</span></button>
+      </nav>
+      <button class="btn back" data-act="menu"><span>← Return</span><span class="num">MENU</span></button>
+    </section>
+
+    <section class="screen" id="screen-howto">
+      <div class="panel-title">How to Play</div>
+      <div class="rule"></div>
+      <div class="copy">
+        <p><strong>The desk.</strong> Seven letters are scrambled under the clue. They are not in word order. Tap them to build a word that fits the headline.</p>
+        <p><strong>File word</strong> checks it. A hit fills the chip. A wrong word does not end the edition — it costs 10 seconds and clears the bar so you can try again.</p>
+        <p><strong>The clock</strong> sits in the masthead. Easy is 1:30, Medium 2:00, Hard 2:30, Daily 3:00. Time left is added to the score when the word is filed. At 0:00 the press stops.</p>
+        <p><strong>Skip</strong> sets this word aside and deals another. You may skip three times in a sitting. A skip does not add the time bonus.</p>
+        <p><strong>Menu</strong> holds the clock. From there, <strong>Shuffle</strong> spins the letters and <strong>Hint</strong> spends a hint to reveal the start. Keyboard letters work too.</p>
+        <p><strong>Daily Challenge</strong> is one shared puzzle for the calendar day — three minutes, no second edition. File it to keep your evening streak. Miss a day and the streak breaks. It holds until midnight once filed.</p>
+        <p><strong>Byline</strong> is the name on your scorebook, kept on this device. A filed word is measured against your best on that desk.</p>
+        <p><strong>Score</strong> = length × 120, plus time remaining, minus hints. A perfect desk earns a bonus column.</p>
+      </div>
+      <button class="btn back" data-act="menu"><span>← Return</span><span class="num">MENU</span></button>
+    </section>
+
+    <section class="screen" id="screen-scores">
+      <div class="panel-title">High Scores</div>
+      <div class="rule"></div>
+      <p id="scoreByline" class="copy" style="text-align:center;margin-top:0"></p>
+      <ol class="scores" id="scoreList"></ol>
+      <p class="empty" id="scoreEmpty">The scorebook is blank. Set the first line.</p>
+      <button class="btn back" data-act="menu"><span>← Return</span><span class="num">MENU</span></button>
+    </section>
+
+    <section class="screen" id="screen-exit">
+      <div class="panel-title">Good Night</div>
+      <div class="rule"></div>
+      <div class="copy">
+        <p>The presses have stopped. This is a broadsheet in a browser — close the leaf to leave the newsroom, or return if the city still needs a word.</p>
+    <p id="exitNote" class="credit"></p>
+      </div>
+      <button class="btn back" data-act="menu"><span>← Return to Desk</span><span class="num">MENU</span></button>
+    </section>
+  </div>
+
+  <div id="hud">
+    <div class="hud-top">
+      <button id="skipBtn" type="button">Skip · 3</button>
+      <div>Level<b id="hudLevel">1</b></div>
+      <div>Score<b id="hudScore">0</b></div>
+      <div class="clock">Time<b id="hudTime">2:00</b></div>
+      <button id="pauseBtn" type="button">Menu</button>
+    </div>
+    <div id="dailyBadge">Daily Edition · one sitting</div>
+    <div id="clueBox">
+      <div id="clueKicker">Clue</div>
+      <div id="clueText">—</div>
+      <div id="foundRow"></div>
+    </div>
+  </div>
+  <div id="playboard">
+    <div id="status"></div>
+    <div id="rack" aria-label="Letters"></div>
+  </div>
+  <div id="wordbar">
+    <input id="typecatch" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type the word" />
+    <div id="built"></div>
+    <button id="submit" type="button" disabled>File word</button>
+  </div>
+  <div id="toast"></div>
+  <div id="levelup"></div>
+
+  <div id="overlay">
+    <div class="card" id="card"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================================================
+   INKWELL — portrait word game
+   Visuals: procedural Three.js only (no image assets).
+   Music & SFX: streamed from Wikimedia Commons.
+   ============================================================ */
+
+/* Streams that allow cross-origin playback from a local file.
+   Wikimedia hotlink-blocks file:// pages (403), so effects come from the
+   Google sound library, which sends Access-Control-Allow-Origin: *.
+   Music is a quiet newsroom ambience — coffee shop, looped — same shelf. */
+const MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg";
+const SFX = {
+  click: "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
+  bell:  "https://actions.google.com/sounds/v1/cartoon/pop.ogg",
+  school:"https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+};
+
+const $ = (id) => document.getElementById(id);
+function setText(id, value) { const el = $(id); if (el) el.textContent = value; }
+function showEl(id, on) { const el = $(id); if (el) el.style.display = on ? "block" : "none"; }
+const stage = $("stage");
+const canvas = $("gl");
+
+const settings = {
+  sound: localStorage.getItem("inkwell-sound") !== "0",
+  music: localStorage.getItem("inkwell-music") !== "0"
+};
+
+/* ---------- audio (streamed) ---------- */
+const music = new Audio();
+music.crossOrigin = "anonymous";
+music.preload = "none";
+music.loop = true;
+music.volume = 0.32;
+let musicBound = false;
+function bindMusic() {
+  if (musicBound) return;
+  musicBound = true;
+  music.src = MUSIC_URL;
+}
+
+const sfxPool = {};
+const sfxCache = {};
+let audioUnlocked = false;
+function warmSfx() {
+  if (!settings.sound || !audioUnlocked) return;
+  for (const key of Object.keys(SFX)) {
+    if (sfxCache[key] || sfxCache[key] === false) continue;
+    const a = new Audio();
+    a.preload = "auto";
+    a.src = SFX[key];
+    a.addEventListener("error", () => { sfxCache[key] = false; }, { once: true });
+    sfxCache[key] = a;
+  }
+}
+function playSfx(key, { rate = 1, vol = 0.55 } = {}) {
+  if (!settings.sound || !audioUnlocked) return;
+  if (sfxCache[key] === false) return;
+  warmSfx();
+  const src = sfxCache[key];
+  if (!src) return;
+  try {
+    src.pause();
+    src.currentTime = 0;
+    src.volume = vol;
+    src.playbackRate = rate;
+    const p = src.play();
+    if (p) p.catch(() => { sfxCache[key] = false; });
+  } catch (e) {
+    sfxCache[key] = false;
+  }
+}
+function ensureMusic() {
+  if (!settings.music || !audioUnlocked) return;
+  bindMusic();
+  if (music.paused) {
+    const p = music.play();
+    if (p) p.catch(() => {});
+  }
+}
+function stopMusic() { music.pause(); }
+
+function syncToggles() {
+  $("soundState").textContent = settings.sound ? "On" : "Off";
+  $("musicState").textContent = settings.music ? "On" : "Off";
+}
+syncToggles();
+
+/* ---------- lexicon ---------- */
+const CLUES = {"CAT":"A pet that purrs","DOG":"A pet that barks","SUN":"It rises in the morning","HAT":"Worn on the head","CUP":"You drink from this","BED":"Where you sleep","MAP":"It shows the way","PEN":"It writes in ink","KEY":"It opens a lock","BOX":"A container with a lid","BUS":"It carries many riders","CAR":"It has four wheels","TEA":"A hot drink from leaves","EGG":"A hen lays this","PIE":"A baked dessert with a crust","JAM":"Fruit spread for toast","BAG":"You carry things in it","ARM":"It joins hand to shoulder","EAR":"You hear with this","EYE":"You see with this","LEG":"You walk on this","LIP":"The edge of the mouth","RED":"The color of a rose","HOT":"The opposite of cold","BIG":"The opposite of small","RUN":"To move very fast","SIT":"To take a chair","WIN":"To come in first","HUG":"A tight embrace","MOM":"A mother","DAD":"A father","BOY":"A young male","TOY":"A child plays with this","FISH":"It swims in water","BIRD":"It has feathers and flies","CAKE":"A sweet birthday treat","MILK":"A white drink from a cow","BOOK":"Pages bound together","TREE":"It has a trunk and leaves","STAR":"It twinkles at night","RAIN":"Water falling from clouds","SNOW":"Frozen white flakes","HAND":"It has five fingers","FOOT":"It wears a shoe","BALL":"A round thing you throw","HOME":"Where you live","FOOD":"What you eat","DOOR":"You open it to enter","FROG":"A green animal that hops","DUCK":"A bird that quacks","LION":"A big cat with a mane","WOLF":"A wild dog that howls","DEER":"An animal with antlers","LAMB":"A young sheep","GOAT":"A farm animal with horns","COW":"It gives milk","PIG":"A farm animal that oinks","HEN":"A female chicken","OWL":"A bird that hunts at night","ANT":"A tiny colony insect","BEE":"It makes honey","FOX":"A clever red wild dog","CUB":"A young bear or lion","PUP":"A young dog","MOON":"It shines at night","KING":"A male ruler","QUEEN":"A female ruler","APPLE":"A common round fruit","BREAD":"A loaf made from flour","WATER":"You drink it to live","HOUSE":"A building you live in","HORSE":"An animal you can ride","MOUSE":"A small animal cats chase","PLANT":"A living thing with leaves","CHAIR":"A seat with a back","TABLE":"You eat at this","SMILE":"A happy look","PHONE":"You call people with this","CANDY":"A sweet treat","SHIP":"A large boat","BOAT":"It floats on water","TRAIN":"It runs on rails","PLANE":"It flies in the sky","BIKE":"A two-wheeled ride","KITE":"It flies on a string","DRUM":"You beat this","BELL":"It rings","FLAG":"Cloth of a country","RING":"Jewelry for a finger","COIN":"A piece of money","NOTE":"A short written message","CARD":"A stiff greeting paper","GIFT":"Something given","CAVE":"A hollow in rock","WAVE":"A moving ridge of water","BEACH":"Sand beside the sea","SHELL":"A hard cover from the sea","CRAB":"It walks sideways","WHALE":"The largest sea animal","SHARK":"A fish with sharp teeth","SNAKE":"A long animal with no legs","TIGER":"A big striped cat","ZEBRA":"A striped horse-like animal","CAMEL":"A desert animal with a hump","SHEEP":"It gives wool","WOOL":"Soft hair from a sheep","CORN":"A yellow grain on a cob","RICE":"A grain cooked in water","SALT":"It sharpens food","SUGAR":"It makes food sweet","LEMON":"A sour yellow fruit","GRAPE":"A small fruit in bunches","PEACH":"A soft fruit with a stone","MELON":"A large sweet fruit","BERRY":"A small juicy fruit","CLOUD":"A white shape in the sky","STORM":"Wild wind and rain","ROAD":"Cars drive on this","GATE":"A door in a fence","PATH":"A narrow way to walk","LOCK":"It needs a key","LAMP":"A light you switch on","DESK":"A table for writing","SOFA":"A long soft seat","RUG":"A floor covering","MUG":"A cup with a handle","PAN":"Used for frying","POT":"Used for boiling","BOWL":"A deep round dish","SPOON":"You eat soup with this","FORK":"It has prongs","KNIFE":"It cuts food","PLATE":"Food is served on this","JUICE":"A drink squeezed from fruit","HONEY":"Sweet food made by bees","NUT":"A hard-shelled seed","PEA":"A small green vegetable","BEAN":"A seed cooked as food","SOUP":"A liquid meal","STEW":"A thick cooked meal","SHOE":"Worn on the foot","SOCK":"Worn inside a shoe","CAP":"A soft hat","BELT":"It holds up trousers","BIN":"A container for rubbish","CAN":"A metal food container","JAR":"A glass container","TUB":"A wide container","LAKE":"Water surrounded by land","POND":"A small lake","SEA":"The salty water","SKY":"The blue above you","FOG":"A cloud on the ground","WIND":"Moving air","ICE":"Frozen water","DAY":"The time of sunlight","NEST":"Where a bird lays eggs","LEAF":"The green part of a plant","TWIG":"A small branch","BARK":"The skin of a tree","MUD":"Wet dirt","SAND":"Grains on a beach","ROCK":"A hard stone","PARK":"A green public space","ZOO":"A place to see animals","FARM":"Where crops are raised","BARN":"A farm building for hay","ROOF":"The top of a house","WALL":"The side of a room","BANK":"Where money is kept","SHOP":"A place that sells things","SIGN":"A board with a message","GARDEN":"Where flowers are grown","CASTLE":"A king's stone fortress","BRIDGE":"A road over water","FOREST":"A large wood","MARKET":"Where goods are sold","WINTER":"The coldest season","SUMMER":"The warmest season","SPRING":"The season after winter","FLOWER":"A bloom on a stem","PLANET":"Earth is one","ROCKET":"It launches into space","CAMERA":"It takes photographs","DOCTOR":"A person who treats the sick","SCHOOL":"Where children learn","FRIEND":"Someone you trust","FAMILY":"Parents and children","YELLOW":"The color of a lemon","ORANGE":"A citrus fruit","PURPLE":"Red mixed with blue","SILVER":"A shiny grey metal","GOLDEN":"The color of a prize","BUTTON":"It fastens a coat","POCKET":"A pouch in clothing","WINDOW":"Glass you look through","MIRROR":"It shows your reflection","CANDLE":"Wax with a wick","KITCHEN":"Where food is cooked","DINNER":"The evening meal","CHURCH":"A place of worship","TEMPLE":"A sacred building","ISLAND":"Land with water all around","OCEAN":"The great salt sea","RIVER":"Flowing water","VALLEY":"Low land between hills","DESERT":"A dry sandy land","JUNGLE":"A thick tropical forest","PIRATE":"A robber of the seas","KNIGHT":"An armored warrior","DRAGON":"A fire-breathing legend","SECRET":"Something kept hidden","TUNNEL":"A passage underground","ENGINE":"It makes a machine go","FACTORY":"Where goods are made","LIBRARY":"A building full of books","MUSEUM":"Where old objects are shown","CIRCUS":"A show with clowns","BALLET":"A dance on pointe","GUITAR":"A stringed instrument","BLANKET":"A warm bed cover","PILLOW":"You rest your head on this","CURTAIN":"Cloth at a window","CARPET":"A soft floor covering","CLOSET":"A small room for clothes","ATTIC":"Space under the roof","CELLAR":"A room under the house","PORCH":"A covered entrance","STATUE":"A carved figure","TORCH":"A flaming light","MATCH":"A stick that strikes fire","FLAME":"The bright part of a fire","SMOKE":"The grey cloud from fire","ASHES":"What a fire leaves","EMBER":"A glowing bit of wood","SPARK":"A tiny flash","FLASH":"A sudden burst of light","GLEAM":"A soft shine","GLOW":"A steady soft light","SHADOW":"A dark shape cast by light","SHADE":"Shelter from the sun","DAWN":"The first light of day","DUSK":"The last light of day","BREEZE":"A gentle wind","GUST":"A sudden rush of wind","SHOWER":"A brief fall of rain","PUDDLE":"A small pool after rain","STREAM":"A small river","CREEK":"A narrow stream","BROOK":"A small fresh stream","MEADOW":"A grassy field","ORCHARD":"A field of fruit trees","HARVEST":"The gathering of crops","STABLE":"Where horses are kept","SADDLE":"The seat on a horse","WAGON":"A cart pulled by animals","DEPOT":"A station","LUGGAGE":"Bags for a journey","VILLAGE":"A small settlement","HAMLET":"A tiny village","COTTAGE":"A small country house","MANOR":"A large country house","ESTATE":"A large owned land","HEDGE":"A living fence","TERRACE":"A raised outdoor space","BALCONY":"A platform outside a window","CHAMBER":"A formal room","PANTRY":"A store for food","HEARTH":"The floor of a fireplace","MANTEL":"The shelf above a fire","CHIMNEY":"The flue for smoke","BELFRY":"Where bells hang","BANNER":"A long flag","CREST":"A family emblem","EMBLEM":"A symbol of a group","BADGE":"A small mark of membership","MEDAL":"A prize on a ribbon","RIBBON":"A narrow strip of cloth","TROPHY":"A cup for winning","WREATH":"A ring of leaves","PETAL":"One leaf of a flower","POLLEN":"Yellow dust from flowers","NECTAR":"Sweet liquid in a flower","WASP":"A stinging insect","ANTLER":"A deer's branched horn","FEATHER":"What covers a bird","TALON":"A hunting bird's claw","BEAK":"A bird's mouth","CLAW":"A sharp animal nail","PAW":"An animal's foot","HOOF":"A horse's foot","MANE":"Long hair on a neck","TAIL":"The part behind an animal","KENNEL":"A dog's house","WHISPER":"To speak very softly","LANTERN":"A portable flame light","ARCHIVE":"Where old records are kept","MERIDIAN":"A line of longitude","LABYRINTH":"A maze hard to leave","OBSIDIAN":"Black volcanic glass","THRESHOLD":"The strip under a door","BROADSHEET":"A full-size newspaper","CIPHER":"A secret code","KEYSTONE":"The stone that locks an arch","PARALLAX":"A shift in view when you move","VESTIBULE":"A small entrance hall","QUICKSILVER":"Another name for mercury","EPHEMERA":"Things meant to last briefly","PALIMPSEST":"A page written over older text","GAZEBO":"An open garden shelter","IRIDESCENT":"Showing rainbow colors as it turns","SONNET":"A fourteen-line poem","MARINER":"A sailor","SEXTANT":"A tool for position at sea","ALMANAC":"A yearly book of facts","VELLUM":"Fine writing skin","INKWELL":"A pot that holds ink","COLOPHON":"A note about a book's printing","HEADLINE":"The title over a story","DATELINE":"Place and date at a story's start","MASTHEAD":"The paper's name at the top","LINOTYPE":"A machine that cast type","COMPOSITOR":"A person who sets type","PROOFREAD":"To check text for errors","DEADLINE":"The last moment to file","EDITORIAL":"The paper's own opinion","CARTOONIST":"A person who draws comics","DISPATCH":"A report from the field","BULLETIN":"A short urgent notice","CHRONICLE":"A record of events","GAZETTE":"An old name for a newspaper","TRIBUNE":"A paper named for a defender","JOURNAL":"A daily record","PAMPHLET":"A thin booklet","MANUSCRIPT":"A text written by hand","FOOTNOTE":"A note at the bottom of a page","APPENDIX":"Extra material at the back","GLOSSARY":"A list of special words","SYLLABLE":"A beat of a spoken word","ANAGRAM":"Letters rearranged into a word","ACRONYM":"A word formed from initials","HOMONYM":"A word that sounds like another","SYNONYM":"A word with the same meaning","ANTONYM":"A word with the opposite meaning","METAPHOR":"Saying one thing is another","ALLUSION":"A brief reference","CADENCE":"The fall of a phrase","STANZA":"A grouped set of lines","COUPLET":"Two rhyming lines","REFRAIN":"A repeated song line","PROLOGUE":"Words before the story","EPILOGUE":"Words after the story","VIGNETTE":"A short sharp sketch","ANECDOTE":"A short true story","PARABLE":"A story with a moral","LEGEND":"A story half history","ODYSSEY":"A long wandering journey","PILGRIM":"A traveler to a holy place","WAYFARER":"A person on the road","CARAVAN":"A group traveling together","CANYON":"A deep gorge","GLACIER":"A slow river of ice","FJORD":"A sea inlet between cliffs","ISTHMUS":"A narrow strip between seas","PENINSULA":"Land almost surrounded by water","ARCHIPELAGO":"A chain of islands","LAGOON":"A shallow pool behind a reef","ESTUARY":"Where a river meets the tide","AQUEDUCT":"A bridge that carries water","BASTION":"A projecting fort wall","CITADEL":"A fortress guarding a city","RAMPART":"A defensive wall","PORTCULLIS":"A grated castle gate","CRESCENDO":"Music growing louder","ORCHESTRA":"A large group of musicians","PROSCENIUM":"The arch framing a stage","UNDERSTUDY":"An actor ready to step in"};
+const POOLS = {"easy":["CAT","DOG","SUN","HAT","CUP","BED","MAP","PEN","KEY","BOX","BUS","CAR","TEA","EGG","PIE","JAM","BAG","ARM","EAR","EYE","LEG","LIP","RED","HOT","BIG","RUN","SIT","WIN","HUG","MOM","DAD","BOY","TOY","FISH","BIRD","CAKE","MILK","BOOK","TREE","STAR","RAIN","SNOW","HAND","FOOT","BALL","HOME","FOOD","DOOR","FROG","DUCK","LION","WOLF","DEER","LAMB","GOAT","COW","PIG","HEN","OWL","ANT","BEE","FOX","CUB","PUP","MOON","KING","QUEEN","APPLE","BREAD","WATER","HOUSE","HORSE","MOUSE","PLANT","CHAIR","TABLE","SMILE","PHONE","CANDY","SHIP","BOAT","TRAIN","PLANE","BIKE","KITE","DRUM","BELL","FLAG","RING","COIN","NOTE","CARD","GIFT","CAVE","WAVE","BEACH","SHELL","CRAB","WHALE","SHARK","SNAKE","TIGER","ZEBRA","CAMEL","SHEEP","WOOL","CORN","RICE","SALT","SUGAR","LEMON","GRAPE","PEACH","MELON","BERRY","CLOUD","STORM","ROAD","GATE","PATH","LOCK","LAMP","DESK","SOFA","RUG","MUG","PAN","POT","BOWL","SPOON","FORK","KNIFE","PLATE","JUICE","HONEY","NUT","PEA","BEAN","SOUP","STEW","SHOE","SOCK","CAP","BELT","BIN","CAN","JAR","TUB","LAKE","POND","SEA","SKY","FOG","WIND","ICE","DAY","NEST","LEAF","TWIG","BARK","MUD","SAND","ROCK","PARK","ZOO","FARM","BARN","ROOF","WALL","BANK","SHOP","SIGN"],"medium":["GARDEN","CASTLE","BRIDGE","FOREST","MARKET","WINTER","SUMMER","SPRING","FLOWER","PLANET","ROCKET","CAMERA","DOCTOR","SCHOOL","FRIEND","FAMILY","YELLOW","ORANGE","PURPLE","SILVER","GOLDEN","BUTTON","POCKET","WINDOW","MIRROR","CANDLE","KITCHEN","DINNER","CHURCH","TEMPLE","ISLAND","OCEAN","RIVER","VALLEY","DESERT","JUNGLE","PIRATE","KNIGHT","DRAGON","SECRET","TUNNEL","ENGINE","FACTORY","LIBRARY","MUSEUM","CIRCUS","BALLET","GUITAR","BLANKET","PILLOW","CURTAIN","CARPET","CLOSET","ATTIC","CELLAR","PORCH","STATUE","TORCH","MATCH","FLAME","SMOKE","ASHES","EMBER","SPARK","FLASH","GLEAM","GLOW","SHADOW","SHADE","DAWN","DUSK","BREEZE","GUST","SHOWER","PUDDLE","STREAM","CREEK","BROOK","MEADOW","ORCHARD","HARVEST","STABLE","SADDLE","WAGON","DEPOT","LUGGAGE","VILLAGE","HAMLET","COTTAGE","MANOR","ESTATE","HEDGE","TERRACE","BALCONY","CHAMBER","PANTRY","HEARTH","MANTEL","CHIMNEY","BELFRY","BANNER","CREST","EMBLEM","BADGE","MEDAL","RIBBON","TROPHY","WREATH","PETAL","POLLEN","NECTAR","WASP","ANTLER","FEATHER","TALON","BEAK","CLAW","PAW","HOOF","MANE","TAIL","KENNEL"],"hard":["WHISPER","LANTERN","ARCHIVE","MERIDIAN","LABYRINTH","OBSIDIAN","THRESHOLD","BROADSHEET","CIPHER","KEYSTONE","PARALLAX","VESTIBULE","QUICKSILVER","EPHEMERA","PALIMPSEST","GAZEBO","IRIDESCENT","SONNET","MARINER","SEXTANT","ALMANAC","VELLUM","INKWELL","COLOPHON","HEADLINE","DATELINE","MASTHEAD","LINOTYPE","COMPOSITOR","PROOFREAD","DEADLINE","EDITORIAL","CARTOONIST","DISPATCH","BULLETIN","CHRONICLE","GAZETTE","TRIBUNE","JOURNAL","PAMPHLET","MANUSCRIPT","FOOTNOTE","APPENDIX","GLOSSARY","SYLLABLE","ANAGRAM","ACRONYM","HOMONYM","SYNONYM","ANTONYM","METAPHOR","ALLUSION","CADENCE","STANZA","COUPLET","REFRAIN","PROLOGUE","EPILOGUE","VIGNETTE","ANECDOTE","PARABLE","LEGEND","ODYSSEY","PILGRIM","WAYFARER","CARAVAN","CANYON","GLACIER","FJORD","ISTHMUS","PENINSULA","ARCHIPELAGO","LAGOON","ESTUARY","AQUEDUCT","BASTION","CITADEL","RAMPART","PORTCULLIS","CRESCENDO","ORCHESTRA","PROSCENIUM","UNDERSTUDY"]};
+
+
+function needCounts(words) {
+  const need = {};
+  for (const w of words) {
+    const c = {};
+    for (const ch of w) c[ch] = (c[ch] || 0) + 1;
+    for (const ch of Object.keys(c)) need[ch] = Math.max(need[ch] || 0, c[ch]);
+  }
+  return need;
+}
+function covers(tiles, words) {
+  return words.every(w => canSpell(w, tiles));
+}
+function lettersOf(words) {
+  const need = needCounts(words);
+  const longest = [...words].sort((a, b) => b.length - a.length)[0];
+  if (covers(longest, words) && longest.length <= 7) return longest.split("");
+  // Build the minimum multiset, then drop lowest-value extras down to 7
+  // only when doing so still spells every target (it must — we never drop below need).
+  const tiles = [];
+  for (const ch of Object.keys(need)) for (let i = 0; i < need[ch]; i++) tiles.push(ch);
+  if (tiles.length <= 7) {
+    const pad = "AEIORST";
+    let k = 0;
+    while (tiles.length < 7) tiles.push(pad[k++ % pad.length]);
+    return tiles;
+  }
+  // More than 7 required counts means the puzzle was authored badly.
+  // Keep the longest word and every letter required by shorter words,
+  // preferring letters that appear in the most targets.
+  const score = {};
+  for (const w of words) for (const ch of new Set(w)) score[ch] = (score[ch] || 0) + w.length;
+  const ranked = Object.keys(need).sort((a, b) => (score[b] || 0) - (score[a] || 0) || a.localeCompare(b));
+  const kept = [];
+  const have = {};
+  for (const ch of ranked) {
+    for (let i = 0; i < need[ch]; i++) {
+      if (kept.length < 7) { kept.push(ch); have[ch] = (have[ch] || 0) + 1; }
+    }
+  }
+  return kept;
+}
+
+function canSpell(word, tiles) {
+  const bag = {};
+  for (const t of tiles) bag[t] = (bag[t] || 0) + 1;
+  for (const ch of word) {
+    if (!bag[ch]) return false;
+    bag[ch]--;
+  }
+  return true;
+}
+
+function hashString(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function dayKey(d = new Date()) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function pickFromPool(level, daily, avoid) {
+  const pool = POOLS[level] || POOLS.medium;
+  const used = seenWords || new Set();
+  const fresh = pool.filter(w => !used.has(w) && w !== avoid);
+  let word;
+  let i;
+  if (daily && !avoid) {
+    i = hashString(dayKey()) % pool.length;
+    word = pool[i];
+  } else if (fresh.length) {
+    word = fresh[Math.floor(Math.random() * fresh.length)];
+    i = pool.indexOf(word);
+  } else {
+    const fallback = pool.filter(w => w !== avoid);
+    const bag = fallback.length ? fallback : pool;
+    word = bag[Math.floor(Math.random() * bag.length)];
+    i = pool.indexOf(word);
+  }
+  const clue = (typeof CLUES !== "undefined" && CLUES[word]) || "A " + word.length + "-letter word";
+  return { clue, words: [word], level, index: i, daily: !!daily };
+}
+
+/* ---------- scores ---------- */
+function loadScores() {
+  try { return JSON.parse(localStorage.getItem("inkwell-scores") || "[]"); }
+  catch { return []; }
+}
+function saveScore(entry) {
+  const all = loadScores();
+  all.push(entry);
+  all.sort((a, b) => b.score - a.score);
+  localStorage.setItem("inkwell-scores", JSON.stringify(all.slice(0, 8)));
+}
+function loadByline() {
+  return (localStorage.getItem("inkwell-byline") || "").trim();
+}
+function saveByline(name) {
+  const clean = String(name || "").replace(/\s+/g, " ").trim().slice(0, 18);
+  if (!clean) return "";
+  localStorage.setItem("inkwell-byline", clean);
+  return clean;
+}
+function askByline() {
+  if (loadByline()) return loadByline();
+  if (localStorage.getItem("inkwell-byline-asked") === "1") return "";
+  localStorage.setItem("inkwell-byline-asked", "1");
+  const typed = window.prompt("Set your byline — the name on the scorebook. Leave blank to stay anonymous.", "");
+  return saveByline(typed || "") || "";
+}
+function bestOnDesk(level, daily) {
+  return loadScores()
+    .filter(e => daily ? e.daily : (!e.daily && (e.level || "city") === (level || "city")))
+    .reduce((best, e) => Math.max(best, e.score || 0), 0);
+}
+function recordLine(score, level, daily) {
+  const prior = bestOnDesk(level, daily);
+  const desk = daily ? "daily" : (level || "city");
+  if (prior <= 0) return "First line in the " + desk + " book.";
+  if (score > prior) return "New " + desk + " record. The old mark was " + prior + ".";
+  const short = prior - score;
+  return short === 0 ? "Tied your " + desk + " best." : short + " short of your " + desk + " best.";
+}
+function loadStreak() {
+  try { return JSON.parse(localStorage.getItem("inkwell-streak") || "{}"); }
+  catch { return {}; }
+}
+function yesterdayKey(d = new Date()) {
+  const y = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  return dayKey(y);
+}
+function streakCount() {
+  const s = loadStreak();
+  const today = dayKey();
+  const yday = yesterdayKey();
+  if (s.last === today || s.last === yday) return s.count || 0;
+  return 0;
+}
+function noteDailyFiled() {
+  const s = loadStreak();
+  const today = dayKey();
+  if (s.last === today) return streakCount();
+  const count = s.last === yesterdayKey() ? (s.count || 0) + 1 : 1;
+  localStorage.setItem("inkwell-streak", JSON.stringify({ count, last: today }));
+  return count;
+}
+function streakLabel() {
+  const n = streakCount();
+  const filed = loadStreak().last === dayKey();
+  if (!n) return "Evening streak · not yet set";
+  const run = n === 1 ? "1 evening running" : n + " evenings running";
+  return filed ? run + " · holds until midnight" : run + " · file today’s daily";
+}
+function paintMasthead() {
+  const streak = $("streakLine");
+  if (streak) streak.textContent = streakLabel();
+  const by = $("bylineLine");
+  const name = loadByline();
+  if (by) by.textContent = name ? "By " + name : "";
+}
+function renderScores() {
+  const all = loadScores();
+  const ol = $("scoreList");
+  ol.innerHTML = "";
+  $("scoreEmpty").style.display = all.length ? "none" : "block";
+  const name = loadByline();
+  const head = $("scoreByline");
+  if (head) head.textContent = name ? "Byline · " + name : "No byline yet. It is asked after your first filed word.";
+  all.forEach((e, i) => {
+    const li = document.createElement("li");
+    const who = e.byline ? e.byline + " · " : "";
+    li.innerHTML = `<span class="rk">${String(i + 1).padStart(2, "0")}</span><span>${who}${e.daily ? "Daily" : "City"} · ${e.date}</span><span class="md">${e.found}/${e.total}</span><span class="sc">${e.score}</span>`;
+    ol.appendChild(li);
+  });
+}
+
+/* ---------- screens ---------- */
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  const el = $("screen-" + name);
+  if (el) el.classList.add("on");
+  $("hud").classList.remove("on");
+  $("pauseBtn").classList.remove("on");
+  const skipEl = $("skipBtn"); if (skipEl) skipEl.classList.remove("on");
+  $("wordbar").classList.remove("on");
+  $("rack").classList.remove("on");
+  const pb = $("playboard"); if (pb) pb.classList.remove("on");
+  if (name === "scores") renderScores();
+  if (name === "menu") paintMasthead();
+  mode = name === "menu" ? "menu" : (name === "play" ? "play" : "panel");
+}
+function toast(msg) {
+  const t = $("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 1100);
+}
+
+let mode = "menu";
+let playing = false;
+let paused = false;
+
+document.querySelectorAll("[data-act]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    playSfx("click", { vol: 0.45, rate: 1.15 });
+    const act = btn.dataset.act;
+    if (act === "play") showScreen("levels");
+    else if (act === "easy") startGame(false, "easy");
+    else if (act === "medium") startGame(false, "medium");
+    else if (act === "hard") startGame(false, "hard");
+    else if (act === "daily") startGame(true);
+    else if (act === "scores") showScreen("scores");
+    else if (act === "howto") showScreen("howto");
+    else if (act === "menu") { showScreen("menu"); }
+    else if (act === "exit") {
+      showScreen("exit");
+      const note = $("exitNote");
+      if (note) note.textContent = "You may close this window. The evening edition will keep.";
+      stopMusic();
+    }
+    else if (act === "sound") {
+      settings.sound = !settings.sound;
+      localStorage.setItem("inkwell-sound", settings.sound ? "1" : "0");
+      syncToggles();
+      if (settings.sound) playSfx("click", { vol: 0.5 });
+    } else if (act === "music") {
+      settings.music = !settings.music;
+      localStorage.setItem("inkwell-music", settings.music ? "1" : "0");
+      syncToggles();
+      if (settings.music) ensureMusic(); else stopMusic();
+    }
+  });
+});
+
+/* ---------- three ---------- */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setClearColor(0x140e0a, 1);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x140e0a);
+scene.fog = new THREE.Fog(0x140e0a, 7, 16);
+
+const camera = new THREE.PerspectiveCamera(34, 9 / 16, 0.1, 40);
+camera.position.set(0, 1.15, 7.4);
+
+const clock = new THREE.Clock();
+
+// lights — warm newsroom
+scene.add(new THREE.AmbientLight(0x6a5340, 0.55));
+const key = new THREE.DirectionalLight(0xffe2b0, 1.25);
+key.position.set(-2.2, 6.5, 4.2);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.camera.near = 1;
+key.shadow.camera.far = 18;
+key.shadow.camera.left = -6;
+key.shadow.camera.right = 6;
+key.shadow.camera.top = 6;
+key.shadow.camera.bottom = -6;
+scene.add(key);
+const rim = new THREE.PointLight(0xc9843a, 8, 14);
+rim.position.set(2.4, 2.2, -1.5);
+scene.add(rim);
+const fill = new THREE.PointLight(0x88a0c0, 3, 12);
+fill.position.set(-3, 0.4, 2);
+scene.add(fill);
+const deskLamp = new THREE.SpotLight(0xfff1d0, 18, 9, 0.45, 0.6, 1.2);
+deskLamp.position.set(-1.6, 3.2, 1.2);
+deskLamp.target.position.set(0, 0.2, 0);
+scene.add(deskLamp);
+scene.add(deskLamp.target);
+
+// paper grain via canvas texture
+function paperTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 512;
+  const g = c.getContext("2d");
+  g.fillStyle = "#efe2c6";
+  g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 14000; i++) {
+    const x = Math.random() * 512, y = Math.random() * 512;
+    const v = 180 + Math.random() * 60;
+    g.fillStyle = `rgba(${v - 30},${v - 20},${v - 40},${0.05 + Math.random() * 0.08})`;
+    g.fillRect(x, y, 1.2, 1.2);
+  }
+  // faint column rules
+  g.strokeStyle = "rgba(60,40,20,0.05)";
+  g.lineWidth = 1;
+  for (let x = 40; x < 512; x += 70) {
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 512); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  return t;
+}
+const paperMap = paperTexture();
+paperMap.repeat.set(2, 3);
+
+function brassTexture() {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 256;
+  const g = c.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, 256, 256);
+  grd.addColorStop(0, "#f0d48a");
+  grd.addColorStop(0.45, "#b8893e");
+  grd.addColorStop(1, "#7a5724");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 400; i++) {
+    g.strokeStyle = `rgba(255,255,255,${Math.random() * 0.08})`;
+    g.beginPath();
+    const y = Math.random() * 256;
+    g.moveTo(0, y); g.lineTo(256, y + (Math.random() - 0.5) * 8); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const brassMap = brassTexture();
+
+function inkTexture() {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const g = c.getContext("2d");
+  g.fillStyle = "#1a120c";
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 200; i++) {
+    g.fillStyle = `rgba(40,28,18,${Math.random() * 0.5})`;
+    g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// desk
+const desk = new THREE.Mesh(
+  new THREE.BoxGeometry(8, 0.18, 5.2),
+  new THREE.MeshStandardMaterial({ map: paperMap, color: 0xd9c7a4, roughness: 0.92, metalness: 0.02 })
+);
+desk.position.y = -1.15;
+desk.receiveShadow = true;
+scene.add(desk);
+
+// wood edge
+const edge = new THREE.Mesh(
+  new THREE.BoxGeometry(8.15, 0.28, 5.35),
+  new THREE.MeshStandardMaterial({ color: 0x4a301c, roughness: 0.7, metalness: 0.05 })
+);
+edge.position.y = -1.32;
+edge.receiveShadow = true;
+scene.add(edge);
+
+// newspaper sheet
+const sheet = new THREE.Mesh(
+  new THREE.PlaneGeometry(3.4, 4.5),
+  new THREE.MeshStandardMaterial({ map: paperMap, color: 0xf3e6cc, roughness: 1, metalness: 0 })
+);
+sheet.rotation.x = -Math.PI / 2;
+sheet.position.set(0, -1.04, 0.15);
+sheet.receiveShadow = true;
+scene.add(sheet);
+
+// inkwell
+const wellGroup = new THREE.Group();
+const wellBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.28, 0.34, 0.42, 28),
+  new THREE.MeshStandardMaterial({ color: 0x24180f, roughness: 0.35, metalness: 0.55, map: inkTexture() })
+);
+wellBody.castShadow = true;
+const wellRim = new THREE.Mesh(
+  new THREE.TorusGeometry(0.27, 0.035, 10, 28),
+  new THREE.MeshStandardMaterial({ color: 0xc9a15b, roughness: 0.35, metalness: 0.8, map: brassMap })
+);
+wellRim.rotation.x = Math.PI / 2;
+wellRim.position.y = 0.2;
+const wellInk = new THREE.Mesh(
+  new THREE.CircleGeometry(0.22, 24),
+  new THREE.MeshStandardMaterial({ color: 0x0c0a12, roughness: 0.15, metalness: 0.4, emissive: 0x1a1030, emissiveIntensity: 0.4 })
+);
+wellInk.rotation.x = -Math.PI / 2;
+wellInk.position.y = 0.19;
+const quill = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.012, 0.028, 0.85, 8),
+  new THREE.MeshStandardMaterial({ color: 0xe8dcc4, roughness: 0.6 })
+);
+quill.position.set(0.08, 0.55, 0);
+quill.rotation.z = -0.5;
+quill.rotation.x = 0.3;
+quill.castShadow = true;
+// nib
+const nib = new THREE.Mesh(
+  new THREE.ConeGeometry(0.03, 0.1, 6),
+  new THREE.MeshStandardMaterial({ color: 0xd7b56a, metalness: 0.85, roughness: 0.25, map: brassMap })
+);
+nib.position.set(0.28, 0.18, 0.1);
+nib.rotation.z = 2.2;
+wellGroup.add(wellBody, wellRim, wellInk, quill, nib);
+wellGroup.position.set(1.7, -0.92, 1.7);
+scene.add(wellGroup);
+
+// lamp (visual only; light is deskLamp)
+const lamp = new THREE.Group();
+const lampBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.16, 0.2, 0.06, 20),
+  new THREE.MeshStandardMaterial({ color: 0xb8904a, metalness: 0.8, roughness: 0.3, map: brassMap })
+);
+const lampStem = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.025, 0.025, 0.7, 10),
+  new THREE.MeshStandardMaterial({ color: 0xc9a15b, metalness: 0.75, roughness: 0.3, map: brassMap })
+);
+lampStem.position.y = 0.38;
+const shade = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.18, 0.32, 0.28, 20, 1, true),
+  new THREE.MeshStandardMaterial({ color: 0xf4e2b0, roughness: 0.8, side: THREE.DoubleSide, emissive: 0xffe0a0, emissiveIntensity: 0.35 })
+);
+shade.position.y = 0.78;
+lamp.add(lampBase, lampStem, shade);
+lamp.position.set(-1.85, -1.04, 1.75);
+scene.add(lamp);
+
+// floating dust
+const dustGeo = new THREE.BufferGeometry();
+const dustCount = 180;
+const dustPos = new Float32Array(dustCount * 3);
+for (let i = 0; i < dustCount; i++) {
+  dustPos[i * 3] = (Math.random() - 0.5) * 5;
+  dustPos[i * 3 + 1] = Math.random() * 3.2 - 0.4;
+  dustPos[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+}
+dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xf0d9a0, size: 0.015, transparent: true, opacity: 0.45 }));
+scene.add(dust);
+
+// letter tiles
+const tileMat = new THREE.MeshStandardMaterial({
+  color: 0xf7efe0, roughness: 0.45, metalness: 0.08, map: paperMap
+});
+const tileEdge = new THREE.MeshStandardMaterial({
+  color: 0xc9a15b, roughness: 0.32, metalness: 0.72, map: brassMap
+});
+function makeGlyphTexture(ch) {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#f4ead6";
+  g.fillRect(0, 0, 256, 256);
+  // paper fleck
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = `rgba(90,60,30,${Math.random() * 0.08})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  g.strokeStyle = "rgba(138,103,48,0.55)";
+  g.lineWidth = 6;
+  g.strokeRect(14, 14, 228, 228);
+  g.fillStyle = "#1a120c";
+  g.font = "700 150px Palatino, Georgia, serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(ch, 128, 132);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+const tiles = [];
+const TILE_HOME = [];
+function buildTiles(letters) {
+  for (const t of tiles) {
+    scene.remove(t.group);
+    t.group.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material && o.material.map && o.material !== tileMat) o.material.map.dispose();
+    });
+  }
+  tiles.length = 0;
+  TILE_HOME.length = 0;
+  const n = letters.length;
+  letters.forEach((ch, i) => {
+    const t01 = n === 1 ? 0.5 : i / (n - 1);
+    const x = (t01 - 0.5) * 3.4;
+    const y = -0.15;
+    const z = -1.6;
+    TILE_HOME.push(new THREE.Vector3(x, y, z));
+    const mat = new THREE.MeshStandardMaterial({ map: makeGlyphTexture(ch), roughness: 0.45, metalness: 0.04, color: 0xfff8ee });
+    const face = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.04), mat);
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.4, 0.05), tileEdge);
+    rim.position.z = -0.02;
+    face.castShadow = true;
+    rim.castShadow = true;
+    const group = new THREE.Group();
+    group.add(rim, face);
+    group.rotation.x = 0;
+    group.position.copy(TILE_HOME[i]);
+    group.userData.index = i;
+    scene.add(group);
+    tiles.push({
+      ch, group, home: TILE_HOME[i].clone(),
+      phase: Math.random() * Math.PI * 2,
+      selected: false,
+      order: -1
+    });
+  });
+}
+
+// ink splash particles
+const splashes = [];
+function splash(origin, color) {
+  for (let i = 0; i < 18; i++) {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 6, 6),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1, emissive: color, emissiveIntensity: 0.2 })
+    );
+    m.position.copy(origin);
+    scene.add(m);
+    splashes.push({
+      m,
+      v: new THREE.Vector3((Math.random() - 0.5) * 2.2, 1.2 + Math.random() * 1.6, (Math.random() - 0.5) * 2.2),
+      life: 0.7 + Math.random() * 0.4
+    });
+  }
+}
+
+/* ---------- game state ---------- */
+let puzzle = null;
+let tilesLetters = [];
+let found = new Set();
+let bonusWords = new Set();
+let score = 0;
+let lives = 3;
+let skipsLeft = 3;
+let seenWords = new Set();
+let sessionLevel = 1;
+let hintStock = 0;
+let wordsCleared = 0;
+let timeLeft = 120;
+let lastTick = 0;
+let path = []; // indices
+let dragging = false;
+let shake = 0;
+let winPulse = 0;
+let dailyDoneKey = localStorage.getItem("inkwell-daily") || "";
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.7);
+const hitPoint = new THREE.Vector3();
+
+function resize() {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+function fmt(t) {
+  t = Math.max(0, Math.ceil(t));
+  return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+}
+
+function updateFoundUI() {
+  const row = $("foundRow");
+  row.innerHTML = "";
+  const words = [...puzzle.words].sort((a, b) => a.length - b.length || a.localeCompare(b));
+  for (const w of words) {
+    const c = document.createElement("span");
+    c.className = "chip" + (found.has(w) ? " on" : "");
+    c.textContent = found.has(w) ? w : "·".repeat(w.length);
+    row.appendChild(c);
+  }
+  const hs = $("hudScore");
+  if (hs) hs.textContent = score;
+  const hl = $("hudLevel"); if (hl) hl.textContent = sessionLevel;
+  const hv = $("hudLives"); if (hv) hv.textContent = lives;
+  const hh = $("hudHints"); if (hh) hh.textContent = hintStock;
+  const ht = $("hudTime");
+  if (ht) {
+    ht.textContent = fmt(timeLeft);
+    ht.classList.toggle("low", timeLeft > 0 && timeLeft <= 15);
+  }
+  const skipEl = $("skipBtn");
+  if (skipEl) {
+    skipEl.textContent = skipsLeft > 0 ? "Skip · " + skipsLeft : "Skip · 0";
+    skipEl.disabled = skipsLeft <= 0;
+  }
+}
+
+function currentWord() {
+  return path.map(i => tiles[i].ch).join("");
+}
+function refreshBuilt() {
+  const w = currentWord();
+  $("built").textContent = w || "";
+  $("submit").disabled = w.length < 3;
+  renderRack();
+}
+
+function focusTyper() {
+  const el = $("typecatch");
+  if (!el || !playing) return;
+  el.removeAttribute("disabled");
+  el.tabIndex = 0;
+  el.focus();
+}
+function renderRack() {
+  const rack = $("rack");
+  if (!rack) return;
+  rack.innerHTML = "";
+  tiles.forEach((tile, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tilebtn" + (path.includes(i) ? " on" : "");
+    b.textContent = tile.ch;
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      audioUnlocked = true;
+      if (!playing) return;
+      selectTile(i);
+    });
+    rack.appendChild(b);
+  });
+}
+
+function selectTile(i) {
+  if (path.includes(i)) {
+    const at = path.indexOf(i);
+    const dropped = path.splice(at);
+    for (const k of dropped) {
+      tiles[k].selected = false;
+      tiles[k].order = -1;
+    }
+    playSfx("click", { vol: 0.25, rate: 0.85 });
+    refreshBuilt();
+    return;
+  }
+  path.push(i);
+  tiles[i].selected = true;
+  tiles[i].order = path.length;
+  playSfx("click", { vol: 0.35, rate: 1.3 + path.length * 0.04 });
+  refreshBuilt();
+}
+
+function clearPath() {
+  for (const i of path) {
+    tiles[i].selected = false;
+    tiles[i].order = -1;
+  }
+  path = [];
+  refreshBuilt();
+}
+
+function submitWord() {
+  if (!playing || paused) return;
+  const w = currentWord();
+  if (w.length < 3) { clearPath(); return; }
+  if (!canSpell(w, tilesLetters)) { miss("Not in the typecase"); return; }
+  if (found.has(w)) { miss("Already filed"); return; }
+  const target = puzzle.words.includes(w);
+  if (!target) { miss("Not the word"); return; }
+  if (found.has(w)) { miss("Already filed"); return; }
+  found.add(w);
+  const gain = target ? w.length * 120 + 40 : Math.min(80, w.length * 20);
+  score += gain;
+  playSfx(target ? "bell" : "click", { vol: target ? 0.55 : 0.4, rate: target ? 1.35 : 1 });
+  /* ink splash skipped — letter buttons have no 3D group */
+  const targetsLeft = puzzle.words.filter(x => !found.has(x));
+  const next = targetsLeft.length
+    ? "Next: a " + targetsLeft.slice().sort((a,b)=>a.length-b.length)[0].length + "-letter word. " + targetsLeft.length + " still open."
+    : "Edition complete.";
+  const msg = (target ? "Filed " + w + "  +" + gain : "Bonus " + w + "  +" + gain);
+  toast(msg);
+  setStatus(msg + "  " + next, "good");
+  winPulse = 1;
+  clearPath();
+  updateFoundUI();
+  if (targetsLeft.length === 0) finish(true);
+}
+
+function setStatus(msg, kind) {
+  const s = $("status");
+  if (!s) return;
+  s.textContent = msg;
+  s.className = "show" + (kind ? " " + kind : "");
+  clearTimeout(setStatus._t);
+  if (kind === "bad") setStatus._t = setTimeout(() => {
+    const left = puzzle ? puzzle.words.filter(w => !found.has(w)) : [];
+    s.className = "show";
+    s.textContent = left.length ? "Find the open chips. Tap letters, then File word." : "";
+  }, 1600);
+}
+function miss(msg) {
+  playSfx("school", { vol: 0.35, rate: 1.6 });
+  shake = 1;
+  if (msg !== "Already filed" && msg !== "Too slight for the column") {
+    timeLeft = Math.max(0, timeLeft - 10);
+    updateFoundUI();
+    if (timeLeft <= 0) {
+      setStatus("The clock ran out", "bad");
+      clearPath();
+      finish(false);
+      return;
+    }
+    msg = msg + " · −10s";
+  }
+  setStatus(msg, "bad");
+  toast(msg);
+  clearPath();
+}
+
+function skipWord() {
+  if (!playing || paused || !puzzle) return;
+  if (skipsLeft <= 0) {
+    toast("No skips left");
+    setStatus("No skips left. File the word, or let the clock run.", "bad");
+    return;
+  }
+  const previous = puzzle.words[0];
+  skipsLeft -= 1;
+  playSfx("click", { vol: 0.4, rate: 0.75 });
+  const level = puzzle.level;
+  const daily = !!puzzle.daily;
+  const keepScore = score;
+  const keepLevel = sessionLevel;
+  const keepHints = hintStock;
+  const keepCleared = wordsCleared;
+  const keepTime = timeLeft;
+  const keepSkips = skipsLeft;
+  startGame(daily, level, true, previous);
+  score = keepScore;
+  sessionLevel = keepLevel;
+  hintStock = keepHints;
+  wordsCleared = keepCleared;
+  timeLeft = keepTime;
+  skipsLeft = keepSkips;
+  updateFoundUI();
+  const left = skipsLeft === 1 ? "1 skip left" : skipsLeft + " skips left";
+  toast("Set aside · " + left);
+  setStatus("Word set aside. " + left + ".", "");
+}
+
+function shuffleTiles() {
+  if (!playing) return;
+  playSfx("click", { vol: 0.4, rate: 0.7 });
+  if (!tiles.length || !tiles[0].home) { clearPath(); renderRack(); return; }
+  // rotate homes
+  const homes = tiles.map(t => t.home.clone());
+  const shift = 1 + Math.floor(Math.random() * (tiles.length - 1));
+  tiles.forEach((t, i) => {
+    t.home.copy(homes[(i + shift) % homes.length]);
+  });
+  clearPath();
+}
+
+function hint() {
+  if (!playing || paused) return;
+  const w = puzzle.words[0];
+  if (!w) return;
+  if (hintStock <= 0) {
+    toast("No hint bonus yet. Cross 5 levels.");
+    return;
+  }
+  hintStock -= 1;
+  const reveal = w.slice(0, Math.min(2, w.length - 1));
+  toast("Starts with " + reveal);
+  setStatus("Hint: starts with " + reveal + " · " + hintStock + " left", "");
+  playSfx("click", { vol: 0.4, rate: 0.9 });
+  updateFoundUI();
+}
+
+if ($("submit")) $("submit").addEventListener("click", () => { playSfx("click", { vol: 0.4 }); submitWord(); });
+if ($("hintBtn")) $("hintBtn").addEventListener("click", () => hint());
+if ($("skipBtn")) $("skipBtn").addEventListener("click", (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+  skipWord();
+});
+
+
+function clearBackdropTiles() {
+  for (const t of tiles) {
+    if (t.group) scene.remove(t.group);
+  }
+  tiles.length = 0;
+  /* ribbon pool removed */
+}
+function dealLetters(letters) {
+  clearBackdropTiles();
+  letters.forEach((ch, i) => {
+    tiles.push({ ch, group: null, home: null, phase: 0, selected: false, order: -1 });
+  });
+}
+function playLevelUp(next) {
+  const el = document.getElementById("levelup");
+  if (!el) return;
+  el.textContent = "Desk rises · " + next;
+  el.classList.remove("on");
+  void el.offsetWidth;
+  el.classList.add("on");
+  clearTimeout(playLevelUp._t);
+  playLevelUp._t = setTimeout(() => el.classList.remove("on"), 1600);
+}
+
+function startGame(daily, level, continuing, avoid) {
+  level = level || "medium";
+  if (daily && !avoid && dailyDoneKey === dayKey()) {
+    toast("Daily already filed");
+    showScreen("scores");
+    // still allow viewing — block replay
+    openCard("daily-locked");
+    return;
+  }
+  puzzle = pickFromPool(level, daily, avoid);
+  seenWords.add(puzzle.words[0]);
+  const answer = puzzle.words[0];
+  tilesLetters = answer.split("");
+  // Never deal the answer in order. Shuffle until the row is not a target word.
+  for (let attempt = 0; attempt < 12; attempt++) {
+    for (let i = tilesLetters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = tilesLetters[i]; tilesLetters[i] = tilesLetters[j]; tilesLetters[j] = tmp;
+    }
+    const row = tilesLetters.join("");
+    if (row !== answer) break;
+  }
+  const decoys = level === "hard" ? 3 : 2;
+  const bag = "RSTLNHAEKMP";
+  for (let d = 0; d < decoys; d++) {
+    tilesLetters.push(bag[(answer.charCodeAt(0) + d * 3) % bag.length]);
+  }
+  found = new Set();
+  bonusWords = new Set();
+  if (!window.__inkwellRun || window.__inkwellRun.level !== level) {
+    // a fresh desk starts at zero; Next word on the same desk keeps the purse
+  }
+  if (!continuing) {
+    score = 0;
+    lives = 3;
+    skipsLeft = 3;
+    seenWords = new Set();
+    sessionLevel = 1;
+    hintStock = 0;
+    wordsCleared = 0;
+  } else if (!avoid) {
+    sessionLevel += 1;
+    if (sessionLevel > 0 && sessionLevel % 5 === 0) {
+      hintStock += 1;
+      setTimeout(() => toast("Hint bonus earned"), 400);
+    }
+  }
+  if (!avoid) timeLeft = daily ? 180 : (level === "easy" ? 90 : level === "hard" ? 150 : 120);
+  path = [];
+  paused = false;
+  playing = true;
+  mode = "play";
+  lastTick = performance.now();
+  dealLetters(tilesLetters);
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  $("hud").classList.add("on");
+  $("pauseBtn").classList.add("on");
+  if ($("skipBtn")) $("skipBtn").classList.add("on");
+  $("wordbar").classList.add("on");
+  $("rack").classList.add("on");
+  $("playboard").classList.add("on");
+  renderRack();
+  const shortest = [...puzzle.words].sort((a,b)=>a.length-b.length)[0];
+  focusTyper();
+  if (!avoid) setStatus("Find the " + answer.length + "-letter word. A wrong word costs 10 seconds.", "");
+  showEl("dailyBadge", daily);
+  setText("dailyBadge", (level || "medium").toUpperCase() + " · " + puzzle.words[0].length + " letters");
+  if (!daily) showEl("dailyBadge", true);
+  setText("clueText", puzzle.clue);
+  setText("built", "");
+  if ($("submit")) $("submit").disabled = true;
+  updateFoundUI();
+  ensureMusic();
+  $("overlay").classList.remove("on");
+}
+
+function finish(won) {
+  playing = false;
+  paused = false;
+  const targets = puzzle.words.length;
+  const got = puzzle.words.filter(w => found.has(w)).length;
+  const bonus = Math.floor(timeLeft) * (won ? 4 : 1) + (won ? 100 : 0);
+  score += bonus;
+  updateFoundUI();
+  const final = score;
+  const byline = askByline();
+  const priorBest = bestOnDesk(puzzle.level, !!puzzle.daily);
+  saveScore({
+    score: final,
+    date: dayKey(),
+    daily: !!puzzle.daily,
+    level: puzzle.level || "city",
+    byline,
+    found: got,
+    total: targets
+  });
+  window.__inkwellRecord = recordLine(final, puzzle.level, !!puzzle.daily);
+  window.__inkwellPrior = priorBest;
+  if (puzzle.daily && won) {
+    dailyDoneKey = dayKey();
+    localStorage.setItem("inkwell-daily", dailyDoneKey);
+    noteDailyFiled();
+  }
+  paintMasthead();
+  if (won) {
+    playSfx("bell", { vol: 0.7, rate: 1 });
+    splash(new THREE.Vector3(0, 0.2, 0), 0xe6c27a);
+  } else playSfx("school", { vol: 0.45, rate: 1 });
+  openCard(won ? "win" : "lose");
+}
+
+function openCard(kind) {
+  const card = $("card");
+  const targets = puzzle ? puzzle.words.length : 0;
+  const got = puzzle ? puzzle.words.filter(w => found.has(w)).length : 0;
+  if (kind === "pause") {
+    card.innerHTML = `
+      <h2>Hold the Press</h2>
+      <p>The clock is waiting.</p>
+      <div class="row">
+        <button class="solid" id="resumeBtn">Resume</button>
+        <button class="line" id="quitBtn">Abandon</button>
+      </div>
+      <div class="row">
+        <button class="line" id="shufBtn">Shuffle</button>
+        <button class="line" id="hintBtn">Hint −80</button>
+        <button class="line" id="skipCardBtn">Skip word</button>
+      </div>`;
+  } else if (kind === "win") {
+    card.innerHTML = `
+      <h2>Word Filed</h2>
+      <div class="big">${score}</div>
+      <p>${window.__inkwellRecord || "Filed."}</p>
+      <p>The word was ${puzzle.words[0]}. Score stays. Choose the next desk.</p>
+      <div class="row">
+        <button class="solid" data-next="easy">Easy</button>
+        <button class="line" data-next="medium">Medium</button>
+        <button class="line" data-next="hard">Hard</button>
+      </div>
+      <div class="row"><button class="line" id="menuBtn">Menu</button></div>`;
+  } else if (kind === "lose") {
+    const missed = puzzle.words.filter(w => !found.has(w)).join(" · ");
+    card.innerHTML = `
+      <h2>Press Stopped</h2>
+      <div class="big">${score}</div>
+      <p>${window.__inkwellRecord || ""}</p>
+      <p>Filed ${got}/${targets}. Still on the spike: ${missed}.</p>
+      <div class="row"><button class="solid" id="againBtn">New Edition</button><button class="line" id="menuBtn">Menu</button></div>`;
+  } else if (kind === "daily-locked") {
+    card.innerHTML = `
+      <h2>Already Set</h2>
+      <p>Today’s daily edition has been filed. ${streakLabel()}. Come back after midnight for a fresh sheet.</p>
+      <div class="row"><button class="solid" id="menuBtn">Menu</button></div>`;
+  }
+  $("overlay").classList.add("on");
+  $("resumeBtn")?.addEventListener("click", () => {
+    paused = false; playing = true; lastTick = performance.now();
+    $("overlay").classList.remove("on");
+    playSfx("click", { vol: 0.4 });
+  });
+  $("quitBtn")?.addEventListener("click", () => {
+    playing = false; paused = false;
+    $("overlay").classList.remove("on");
+    showScreen("menu");
+  });
+  $("shufBtn")?.addEventListener("click", () => { shuffleTiles(); });
+  $("hintBtn")?.addEventListener("click", () => { hint(); });
+  $("skipCardBtn")?.addEventListener("click", () => {
+    paused = false;
+    playing = true;
+    lastTick = performance.now();
+    $("overlay").classList.remove("on");
+    skipWord();
+  });
+  document.querySelectorAll("[data-next]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const next = btn.getAttribute("data-next");
+      const rising = puzzle && next !== puzzle.level;
+      startGame(false, next, true);
+      if (rising) playLevelUp(next);
+    });
+  });
+  $("menuBtn")?.addEventListener("click", () => {
+    $("overlay").classList.remove("on");
+    showScreen("menu");
+  });
+}
+
+if ($("pauseBtn")) $("pauseBtn").addEventListener("click", () => {
+  if (!playing) return;
+  paused = true;
+  playing = false;
+  playSfx("click", { vol: 0.4 });
+  openCard("pause");
+});
+
+function ndcFromEvent(ev) {
+  const r = canvas.getBoundingClientRect();
+  const src = ev.touches ? ev.touches[0] : ev;
+  pointer.x = ((src.clientX - r.left) / r.width) * 2 - 1;
+  pointer.y = -((src.clientY - r.top) / r.height) * 2 + 1;
+}
+function tileUnderPointer() {
+  raycaster.setFromCamera(pointer, camera);
+  const objs = tiles.filter(t => t.group).map(t => t.group.children).flat();
+  if (!objs.length) return -1;
+  const hits = raycaster.intersectObjects(objs, false);
+  if (!hits.length) return -1;
+  let o = hits[0].object;
+  while (o.parent && o.parent !== scene) {
+    if (o.userData && o.userData.index != null && o.parent === scene) break;
+    o = o.parent;
+  }
+  // group is parent of meshes
+  const g = hits[0].object.parent;
+  return g && g.userData ? g.userData.index : -1;
+}
+
+function onDown(ev) {
+  audioUnlocked = true;
+  warmSfx();
+  ensureMusic();
+  if (!playing) return;
+  if (ev.target && ev.target.closest && ev.target.closest("#ui, #hud, #playboard, #wordbar, #overlay, button")) return;
+  ev.preventDefault();
+  ndcFromEvent(ev);
+  dragging = true;
+  const i = tileUnderPointer();
+  if (i >= 0) selectTile(i);
+}
+function onMove(ev) {
+  if (!playing || !dragging) return;
+  ev.preventDefault();
+  ndcFromEvent(ev);
+  const i = tileUnderPointer();
+  if (i >= 0 && !path.includes(i)) selectTile(i);
+  else if (i >= 0 && path.length >= 2 && path[path.length - 2] === i) {
+    const last = path.pop();
+    tiles[last].selected = false;
+    tiles[last].order = -1;
+    refreshBuilt();
+  }
+}
+function onUp(ev) {
+  if (!playing) return;
+  if (dragging && path.length >= 3) submitWord();
+  else if (dragging) clearPath();
+  dragging = false;
+}
+canvas.addEventListener("pointerdown", (ev) => {
+  if (ev.target && ev.target.closest && ev.target.closest("#ui, #hud, #playboard, #wordbar, #overlay, button")) return;
+  onDown(ev);
+  focusTyper();
+});
+if (document.getElementById("stage")) document.getElementById("stage").addEventListener("pointerdown", (ev) => {
+  if (ev.target && ev.target.closest && ev.target.closest("button, #hud, #wordbar, #overlay")) return;
+  focusTyper();
+});
+window.addEventListener("pointermove", onMove);
+window.addEventListener("pointerup", onUp);
+canvas.addEventListener("touchstart", onDown, { passive: false });
+canvas.addEventListener("touchmove", onMove, { passive: false });
+canvas.addEventListener("touchend", onUp);
+
+if ($("typecatch")) $("typecatch").addEventListener("input", (e) => {
+  if (!playing) { e.target.value = ""; return; }
+  const raw = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+  path = [];
+  tiles.forEach(t => { t.selected = false; t.order = -1; });
+  for (const ch of raw) {
+    const i = tiles.findIndex((t, idx) => t.ch === ch && path.indexOf(idx) === -1);
+    if (i >= 0) { path.push(i); tiles[i].selected = true; tiles[i].order = path.length; }
+  }
+  e.target.value = path.map(i => tiles[i].ch).join("");
+  const built = $("built");
+  if (built) built.textContent = e.target.value;
+  const sub = $("submit");
+  if (sub) sub.disabled = e.target.value.length < 3;
+  renderRack();
+});
+if ($("typecatch")) $("typecatch").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); submitWord(); }
+});
+function onGameKey(e) {
+  if (e.repeat && e.key !== "Backspace") return;
+  if (e.key === "Escape") {
+    if (playing) { paused = true; playing = false; openCard("pause"); }
+    else if ($("overlay").classList.contains("on")) { /* ignore */ }
+    else showScreen("menu");
+    return;
+  }
+  if (!playing) return;
+  if (e.key === "Enter") { submitWord(); return; }
+  if (e.key === "Backspace") {
+    if (path.length) {
+      const last = path.pop();
+      tiles[last].selected = false;
+      tiles[last].order = -1;
+      refreshBuilt();
+    }
+    return;
+  }
+  const ch = (e.key || "").toUpperCase();
+  if (ch.length === 1 && ch >= "A" && ch <= "Z") {
+    const i = tiles.findIndex((t, idx) => t.ch === ch && path.indexOf(idx) === -1);
+    if (i >= 0) selectTile(i);
+  }
+}
+document.addEventListener("keydown", onGameKey, true);
+window.addEventListener("keydown", onGameKey, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (playing) { paused = true; playing = false; openCard("pause"); }
+    else if ($("overlay").classList.contains("on")) { /* ignore */ }
+    else showScreen("menu");
+  }
+  if (!playing) return;
+  if (e.key === "Enter") submitWord();
+  if (e.key === "Backspace") {
+    if (path.length) {
+      const last = path.pop();
+      tiles[last].selected = false;
+      tiles[last].order = -1;
+      refreshBuilt();
+    }
+    return;
+  }
+  if (/^[a-zA-Z]$/.test(e.key)) {
+    e.preventDefault();
+    const ch = e.key.toUpperCase();
+    const i = tiles.findIndex((t, idx) => t.ch === ch && path.indexOf(idx) === -1);
+    if (i >= 0) selectTile(i);
+  }
+}, true);
+
+// date line
+const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const now = new Date();
+$("dateLine").textContent = days[now.getDay()] + ", " + months[now.getMonth()] + " " + now.getDate();
+paintMasthead();
+
+/* ---------- animate ---------- */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, clock.getDelta());
+  const t = clock.elapsedTime;
+
+  if (playing) {
+    const nowMs = performance.now();
+    timeLeft -= (nowMs - lastTick) / 1000;
+    lastTick = nowMs;
+    if (timeLeft <= 0) {
+      timeLeft = 0;
+      finish(false);
+    }
+    const ht = $("hudTime");
+    if (ht) {
+      ht.textContent = fmt(timeLeft);
+      ht.classList.toggle("low", timeLeft <= 15);
+    }
+  }
+
+  // camera
+  const menuCam = mode !== "play";
+  const target = menuCam
+    ? new THREE.Vector3(0, 0.85, 5.2)
+    : new THREE.Vector3(0, 1.6, 5.4);
+  camera.position.lerp(target, 1 - Math.pow(0.02, dt));
+  const lookAt = menuCam ? new THREE.Vector3(0, 0.2, 0) : new THREE.Vector3(0, -0.2, -1.2);
+  camera.lookAt(lookAt);
+  /* look applied above */
+
+  if (shake > 0) {
+    shake = Math.max(0, shake - dt * 2.2);
+    camera.position.x += (Math.random() - 0.5) * 0.06 * shake;
+  }
+
+  /* letter buttons are HTML; do not touch removed 3D groups */
+
+  // selection ribbon (thin boxes between tiles) — reuse or create
+  /* ribbon removed — it linked tiles off the portrait frame */
+
+  wellGroup.rotation.y = Math.sin(t * 0.3) * 0.08;
+  lamp.position.y = -1.04 + Math.sin(t * 0.8) * 0.005;
+  deskLamp.intensity = 16 + Math.sin(t * 3.1) * 1.2 + winPulse * 10;
+  winPulse = Math.max(0, winPulse - dt);
+
+  // dust drift
+  const arr = dust.geometry.attributes.position.array;
+  for (let i = 0; i < dustCount; i++) {
+    arr[i * 3 + 1] += dt * 0.05;
+    arr[i * 3] += Math.sin(t + i) * dt * 0.01;
+    if (arr[i * 3 + 1] > 2.8) arr[i * 3 + 1] = -0.4;
+  }
+  dust.geometry.attributes.position.needsUpdate = true;
+
+  for (let i = splashes.length - 1; i >= 0; i--) {
+    const s = splashes[i];
+    s.life -= dt;
+    s.v.y -= dt * 4.5;
+    s.m.position.addScaledVector(s.v, dt);
+    s.m.scale.multiplyScalar(0.98);
+    if (s.life <= 0) {
+      scene.remove(s.m);
+      s.m.geometry.dispose();
+      s.m.material.dispose();
+      splashes.splice(i, 1);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+const ribbonMat = new THREE.MeshBasicMaterial({ color: 0xc9a15b, transparent: true, opacity: 0.9 });
+const ribbonGeo = new THREE.CylinderGeometry(0.018, 0.018, 1, 6);
+const ribbonPool = [];
+function drawRibbon() {
+  let used = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = tiles[path[i]].group.position;
+    const b = tiles[path[i + 1]].group.position;
+    let mesh = ribbonPool[used];
+    if (!mesh) {
+      mesh = new THREE.Mesh(ribbonGeo, ribbonMat);
+      ribbonPool.push(mesh);
+      scene.add(mesh);
+    }
+    mesh.visible = true;
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    mid.y += 0.14;
+    mesh.position.copy(mid);
+    mesh.scale.set(1, a.distanceTo(b), 1);
+    mesh.lookAt(b);
+    mesh.rotateX(Math.PI / 2);
+    used++;
+  }
+  for (let i = used; i < ribbonPool.length; i++) ribbonPool[i].visible = false;
+}
+
+// boot: show menu world with a sample ring of tiles so the desk isn't empty
+/* no boot tiles */
+showScreen("menu");
+setTimeout(() => { $("boot").style.opacity = "0"; }, 700);
+animate();
+
+// unlock audio on first pointer anywhere
+window.addEventListener("pointerdown", () => { if (settings.music && mode !== "exit") ensureMusic(); }, { once: false });
+</script>
+</body>
+</html>
