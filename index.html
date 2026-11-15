@@ -1488,6 +1488,7 @@ function playLevelUp(next) {
 
 function startGame(daily, level, continuing, avoid) {
   level = level || "medium";
+  window.PIM&&window.PIM.start({ mode: daily ? 'daily' : 'classic', difficulty: level });
   if (daily && !avoid && dailyDoneKey === dayKey()) {
     toast("Daily already filed");
     showScreen("scores");
@@ -1568,6 +1569,7 @@ function finish(won) {
   const targets = puzzle.words.length;
   const got = puzzle.words.filter(w => found.has(w)).length;
   const bonus = Math.floor(timeLeft) * (won ? 4 : 1) + (won ? 100 : 0);
+  window.PIM&&window.PIM.end({ result: won ? 'win' : 'time_up', words_found: got, words_total: targets });
   score += bonus;
   updateFoundUI();
   const final = score;
